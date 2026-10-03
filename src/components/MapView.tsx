@@ -16,8 +16,12 @@ const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">Op
 
 const svg = (icon: ComponentType<{ size?: number }>) => renderToStaticMarkup(createElement(icon, { size: 15 }));
 
-async function createMap(el: HTMLDivElement) {
+// Loads Leaflet, then creates the map only if the effect is still current.
+// React dev mode mounts effects twice; creating the map before checking
+// would initialise the same container twice and Leaflet throws.
+async function createMap(el: HTMLDivElement, isCancelled: () => boolean) {
   const L = (await import("leaflet")).default;
+  if (isCancelled()) return null;
   const m = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true });
   L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(m);
   return { L, m };
@@ -69,8 +73,9 @@ export function MapView({ home, homeKind = "property", places, properties = [], 
     let map: LeafletMap | null = null;
     (async () => {
       if (!el.current) return;
-      const { L, m } = await createMap(el.current);
-      if (cancelled) return m.remove();
+      const created = await createMap(el.current, () => cancelled);
+      if (!created) return;
+      const { L, m } = created;
       map = m;
       const bounds = L.latLngBounds([[home.lat, home.lng]]);
       for (const pt of addPlaces(L, m, home, places)) bounds.extend(pt);
@@ -131,8 +136,9 @@ export function AreasMap({
     let map: LeafletMap | null = null;
     (async () => {
       if (!el.current) return;
-      const { L, m } = await createMap(el.current);
-      if (cancelled) return m.remove();
+      const created = await createMap(el.current, () => cancelled);
+      if (!created) return;
+      const { L, m } = created;
       map = m;
       markers.current.clear();
       const bounds = L.latLngBounds([]);
