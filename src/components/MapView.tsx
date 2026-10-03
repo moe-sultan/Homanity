@@ -11,8 +11,15 @@ export type MapPoint = { lat: number; lng: number; label: string; href?: string 
 export type MapPlace = MapPoint & { kind: "work" | "place"; minutes?: number; icon?: ComponentType<{ size?: number }> };
 export type MapArea = MapPoint & { id: string; fit: number };
 
-const TILES = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO';
+// Free map tiles that need no API key. If the first provider fails to load
+// (blocked network, rate limit), the map switches to the next one.
+// NEXT_PUBLIC_MAP_TILES can point at any other {z}/{x}/{y} tile server.
+const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const TILE_PROVIDERS = [
+  ...(process.env.NEXT_PUBLIC_MAP_TILES ? [{ url: process.env.NEXT_PUBLIC_MAP_TILES, attribution: OSM }] : []),
+  { url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", attribution: `${OSM} &copy; CARTO` },
+  { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: OSM },
+];
 
 const svg = (icon: ComponentType<{ size?: number }>) => renderToStaticMarkup(createElement(icon, { size: 15 }));
 
@@ -23,7 +30,21 @@ async function createMap(el: HTMLDivElement, isCancelled: () => boolean) {
   const L = (await import("leaflet")).default;
   if (isCancelled()) return null;
   const m = L.map(el, { scrollWheelZoom: false, zoomControl: true, attributionControl: true });
-  L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 19 }).addTo(m);
+  let provider = 0;
+  let errors = 0;
+  const addTiles = () => {
+    const { url, attribution } = TILE_PROVIDERS[provider];
+    const layer = L.tileLayer(url, { attribution, maxZoom: 19 }).addTo(m);
+    layer.on("tileload", () => (errors = 0));
+    layer.on("tileerror", () => {
+      if (++errors < 4 || provider >= TILE_PROVIDERS.length - 1) return;
+      provider++;
+      errors = 0;
+      m.removeLayer(layer);
+      addTiles();
+    });
+  };
+  addTiles();
   return { L, m };
 }
 
