@@ -169,7 +169,7 @@ export function TravelSource() {
       <span className="live" /> Live travel times
     </span>
   ) : (
-    <span className="source" title="Estimated from distance and transport links. Add a Google Maps key for live times.">
+    <span className="source" title="Estimated from distance and transport links">
       <span className="est" /> Estimated travel times
     </span>
   );
