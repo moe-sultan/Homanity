@@ -15,11 +15,16 @@ npm run dev        # http://localhost:3000
 
 Node 20+ required. The map tiles load from CARTO/OpenStreetMap, so the machine needs internet access.
 
+It runs with no API keys. To switch on real data (Claude for reading the description, Google Maps for live
+travel times, place search and street photos, and your own listings), copy `.env.example` to `.env.local` and
+follow [docs/API_SETUP.md](docs/API_SETUP.md). Every integration falls back to the built-in version if its key
+is missing, and the footer shows which sources are live.
+
 ## The flow
 
-1. `/` Describe your life (free text, prompt chips, "Try an example").
+1. `/` Describe your life in free text, add details with quick chips, or start from one of three example weeks.
 2. `/context` Review what was understood, fix anything, mark what's a must, matters, or nice to have, and add places.
-3. `/areas` Areas with typical rent, commute, transport and a Fit indication.
+3. `/areas` Areas as a list with a Fit ring, rent, commute and rail at a glance, next to a map pinned with each Fit.
 4. `/areas/[id]` Map of the area against your work and important places, typical rents, everyday places, homes.
 5. `/properties/[id]` One home in context: Fit, why that Fit, rent vs area, your week from here, questions to ask before viewing.
 6. `/saved` Shortlist and compare, including rent + commuting cost.
@@ -30,19 +35,21 @@ Context and saved homes live in the browser (localStorage).
 
 | Layer | Where | What |
 | --- | --- | --- |
-| User context | `src/lib/context/` | `UserContext` type, `ContextExtractor` interface, rule-based `mockExtractor` |
+| User context | `src/lib/context/` | `UserContext` type, `ContextExtractor` interface, `claudeExtractor` and rule-based `mockExtractor` |
 | Listing & area data | `src/lib/data/` | 14 curated areas, 42 sample listings, named places and everyday POIs |
-| Derived calculations | `src/lib/fit/` | Travel-time estimates (`travel.ts`) and the Fit score (`evaluate.ts`) |
+| Derived calculations | `src/lib/fit/` | Travel times (`travel.ts`: real routed times when available, else estimates) and the Fit score (`evaluate.ts`) |
+| Integrations (server) | `src/lib/geo/`, `src/lib/integrations.ts`, `src/app/api/` | Google Routes, Places and Street View; which sources are live |
 | UI | `src/app/`, `src/components/` | Next.js App Router pages, Leaflet map |
 
-API: `POST /api/context { text }` returns `{ context: UserContext }`.
+API: `POST /api/context { text }` returns `{ context: UserContext }`. Also `POST /api/travel`, `GET /api/geocode?q=`,
+`GET /api/streetview?lat=&lng=` and `GET /api/status` (see docs/API_SETUP.md).
 
-## Swapping in a real AI extractor
+## AI extraction
 
-`src/lib/context/index.ts` → `getExtractor()` is the only swap point. Implement `ContextExtractor`
-(`extract(text) => Promise<UserContext>`) with an LLM call that returns the `UserContext` JSON shape and
-return it there when an API key is set. Nothing else changes. The mock deliberately records only what the text
-says; anything it can't place goes into `notes` and is shown back to the renter.
+`src/lib/context/index.ts` → `getExtractor()` is the only swap point. With `ANTHROPIC_API_KEY` set it uses
+`claudeExtractor` (structured output, place names resolved to points by `src/lib/geo/resolve.ts`), falling back
+to the rule-based `mockExtractor` on any error. Both record only what the text says; anything they can't place
+goes into `notes` and is shown back to the renter.
 
 ## How Fit works
 
@@ -56,8 +63,9 @@ A weighted average of 0–1 factor scores, ×100. Weights come from what the ren
 - **Public transport access** (no car): walk to a frequent stop.
 - **Rent vs area**: 10% below typical = 1, 10% above = 0.
 
-Travel times are estimates from straight-line distance, mode, and whether both ends are on rail (DART, Luas,
-commuter). Replace `estimateTravel` with real routing (NTA GTFS, Google Routes) later without touching callers.
+Travel times come from Google Routes when `GOOGLE_MAPS_API_KEY` is set (work and named places, weekday 08:30).
+Otherwise, and for "nearest" places, they're estimates from straight-line distance, mode, and whether both ends
+are on rail (DART, Luas, commuter).
 
 ## Data caveats
 

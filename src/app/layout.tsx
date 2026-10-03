@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
+import { DataSources } from "@/components/DataSources";
 import { Header } from "@/components/Header";
+import { LiveProvider } from "@/lib/live";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
@@ -14,14 +16,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <StoreProvider>
-          <Header />
-          <main>{children}</main>
-          <footer className="footer">
-            <div className="container">
-              Hackathon demo. Listings are a small curated sample, typical rents are indicative benchmarks, and travel times are
-              estimates from distance and transport links. Use them to ask better questions, not as a final answer.
-            </div>
-          </footer>
+          <LiveProvider>
+            <Header />
+            <main>{children}</main>
+            <footer className="footer">
+              <div className="container row">
+                <span>Hackathon demo. Use these numbers to ask better questions, not as a final answer.</span>
+                <DataSources />
+              </div>
+            </footer>
+          </LiveProvider>
         </StoreProvider>
       </body>
     </html>

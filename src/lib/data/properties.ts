@@ -1,4 +1,5 @@
 import { getArea } from "./areas";
+import imported from "./imported-listings.json";
 import type { Property } from "./types";
 
 // Small curated sample of listings for the demo. Not live marketplace data.
@@ -76,7 +77,7 @@ const ROWS: Row[] = [
   ["navan", "4-bed detached", "Athlumney, Navan", "House", 4, 3, 2150, "B2", 11, "Navan town coach stop", -0.006, 0.008, ["Large garden", "Driveway"]],
 ];
 
-export const PROPERTIES: Property[] = ROWS.map((r, i) => {
+const SAMPLE: Property[] = ROWS.map((r, i) => {
   const [areaId, title, address, type, beds, baths, rent, ber, walkToStopMin, stopName, dLat, dLng, features] = r;
   const area = getArea(areaId)!;
   return {
@@ -96,6 +97,10 @@ export const PROPERTIES: Property[] = ROWS.map((r, i) => {
     features,
   };
 });
+
+// Real listings added with `npm run import:listings` (see docs/API_SETUP.md).
+// They sit alongside the hand-made sample and show their source and a link.
+export const PROPERTIES: Property[] = [...(imported as Property[]), ...SAMPLE];
 
 export function getProperty(id: string): Property | undefined {
   return PROPERTIES.find((p) => p.id === id);

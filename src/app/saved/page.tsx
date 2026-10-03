@@ -1,25 +1,29 @@
 "use client";
 
+import { Bath, Briefcase, Footprints, Heart, Scale, Wallet, X, Zap, BedDouble, Coins, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
-import { FitBadge, RentDiff, euro, useRequireContext } from "@/components/bits";
-import { PropertyCard } from "@/components/PropertyCard";
+import { FairRent, FitRing, HomeImage, euro, placeIcon, placeLabel, useRequireContext } from "@/components/bits";
+import { HomeCard } from "@/components/HomeCard";
 import { getArea } from "@/lib/data/areas";
 import { getProperty } from "@/lib/data/properties";
 import type { Property } from "@/lib/data/types";
 import { evaluateProperty, type Evaluation } from "@/lib/fit/evaluate";
+import { useLive } from "@/lib/live";
 import { useStore } from "@/lib/store";
 
 type Item = { property: Property; e: Evaluation };
 type Row = {
   label: string;
+  icon: LucideIcon;
   values: (number | undefined)[];
-  render: (item: Item, i: number) => ReactNode;
+  render: (item: Item) => ReactNode;
   better?: "low" | "high"; // highlight the cell that is kindest to the renter
 };
 
 export default function SavedPage() {
   const ctx = useRequireContext();
+  const { lookup } = useLive();
   const { saved, toggleSaved } = useStore();
   const items: Item[] = useMemo(
     () =>
@@ -27,9 +31,9 @@ export default function SavedPage() {
         ? saved
             .map((id) => getProperty(id))
             .filter((p): p is Property => !!p)
-            .map((property) => ({ property, e: evaluateProperty(ctx, property) }))
+            .map((property) => ({ property, e: evaluateProperty(ctx, property, lookup) }))
         : [],
-    [ctx, saved],
+    [ctx, saved, lookup],
   );
   if (!ctx) return null;
 
@@ -37,8 +41,9 @@ export default function SavedPage() {
     return (
       <div className="container narrow">
         <div className="card empty">
+          <span className="icon-bubble lg place"><Heart size={22} /></span>
           <h2>Nothing saved yet</h2>
-          <p>Save homes as you explore areas, then compare them here side by side against your life.</p>
+          <p>Tap the heart on any home, then compare them here side by side against your week.</p>
           <Link href="/areas" className="btn btn-primary">Explore areas</Link>
         </div>
       </div>
@@ -47,27 +52,17 @@ export default function SavedPage() {
 
   const linkIds = Array.from(new Set(items.flatMap((it) => it.e.links.map((l) => l.id))));
   const linkMeta = (id: string) => items.flatMap((it) => it.e.links).find((l) => l.id === id)!;
+  const maxMinutes = Math.max(1, ...items.flatMap((it) => it.e.links.map((l) => l.travel.minutes)));
 
   const rows: Row[] = [
     {
-      label: "Fit with your life",
-      values: items.map((it) => it.e.fit),
-      render: (it) => <FitBadge fit={it.e.fit} />,
-      better: "high",
-    },
-    {
       label: "Rent",
+      icon: Wallet,
       values: items.map((it) => it.property.rent),
-      render: (it) => <span className="num">{euro(it.property.rent)}</span>,
-      better: "low",
-    },
-    {
-      label: "Typical area rent",
-      values: items.map((it) => it.e.rentDiff),
       render: (it) => (
-        <div className="stack" style={{ gap: 2 }}>
-          <span className="num">{euro(it.e.typicalRent)}</span>
-          <RentDiff diff={it.e.rentDiff} />
+        <div>
+          <span className="num" style={{ fontSize: 17 }}>{euro(it.property.rent)}</span>
+          <div><FairRent diff={it.e.rentDiff} /></div>
         </div>
       ),
       better: "low",
@@ -75,15 +70,18 @@ export default function SavedPage() {
     ...linkIds.map<Row>((id) => {
       const meta = linkMeta(id);
       return {
-        label: meta.kind === "work" ? `To work: ${meta.name}` : meta.name,
+        label: meta.kind === "work" ? meta.name : placeLabel(meta.name),
+        icon: meta.kind === "work" ? Briefcase : placeIcon({ name: meta.name }),
         values: items.map((it) => it.e.links.find((l) => l.id === id)?.travel.minutes),
         render: (it) => {
           const l = it.e.links.find((x) => x.id === id);
-          if (!l) return <span className="muted">—</span>;
+          if (!l) return <span className="muted">–</span>;
           return (
             <div>
               <span className="num">{l.travel.minutes} min</span>
-              {l.kind === "place" && l.point.label !== l.name && <div className="small muted">{l.point.label}</div>}
+              <div className="mini-bar">
+                <i style={{ width: `${(l.travel.minutes / maxMinutes) * 100}%`, background: l.kind === "work" ? "var(--work)" : "var(--place)" }} />
+              </div>
             </div>
           );
         },
@@ -93,39 +91,45 @@ export default function SavedPage() {
   ];
 
   if (ctx.work.length) {
-    rows.push(
-      {
-        label: "Commuting cost",
-        values: items.map((it) => it.e.monthlyTransportCost),
-        render: (it) => <span className="num">≈ {euro(it.e.monthlyTransportCost ?? 0)}/mo</span>,
-        better: "low",
-      },
-      {
-        label: "Rent + commuting",
-        values: items.map((it) => it.property.rent + (it.e.monthlyTransportCost ?? 0)),
-        render: (it) => <span className="num">≈ {euro(it.property.rent + (it.e.monthlyTransportCost ?? 0))}/mo</span>,
-        better: "low",
-      },
-    );
+    rows.push({
+      label: "Rent + commuting",
+      icon: Coins,
+      values: items.map((it) => it.property.rent + (it.e.monthlyTransportCost ?? 0)),
+      render: (it) => (
+        <div>
+          <span className="num">≈ {euro(it.property.rent + (it.e.monthlyTransportCost ?? 0))}</span>
+          <div className="tiny muted">incl. ≈ {euro(it.e.monthlyTransportCost ?? 0)} travel</div>
+        </div>
+      ),
+      better: "low",
+    });
   }
 
   rows.push(
     {
       label: "Bedrooms",
+      icon: BedDouble,
       values: items.map((it) => it.property.beds),
-      render: (it) => <span className="num">{it.property.beds} bed · {it.property.baths} bath</span>,
+      render: (it) => (
+        <span className="specs">
+          <span><BedDouble size={15} /> <span className="num">{it.property.beds}</span></span>
+          <span><Bath size={15} /> {it.property.baths}</span>
+        </span>
+      ),
       better: "high",
     },
     {
       label: "Walk to transport",
+      icon: Footprints,
       values: items.map((it) => it.property.walkToStopMin),
-      render: (it) => <span>{it.property.walkToStopMin} min · <span className="muted small">{it.property.stopName}</span></span>,
+      render: (it) => <span className="num" title={it.property.stopName}>{it.property.walkToStopMin} min</span>,
       better: "low",
     },
     {
-      label: "BER",
+      label: "Energy (BER)",
+      icon: Zap,
       values: items.map(() => undefined),
-      render: (it) => <span>{it.property.ber}</span>,
+      render: (it) => <span className="tag">{it.property.ber}</span>,
     },
   );
 
@@ -138,14 +142,10 @@ export default function SavedPage() {
   };
 
   return (
-    <div className="container">
+    <div className="container fade-in">
       <div className="page-head">
-        <span className="eyebrow">Step 3 of 3 · Saved</span>
         <h1>Compare your shortlist</h1>
-        <p className="lede">
-          Each row is something you told us matters. Green marks the kinder option on that row. The trade-offs are yours to weigh;
-          a home that costs more might give you back hours every week.
-        </p>
+        <p className="sub">Green marks the kinder option on each row. A pricier home might give you back hours every week; the call is yours.</p>
       </div>
 
       <div className="card compare-wrap">
@@ -155,11 +155,21 @@ export default function SavedPage() {
               <th />
               {items.map((it) => (
                 <th key={it.property.id}>
-                  <Link href={`/properties/${it.property.id}`} style={{ fontWeight: 650 }}>{it.property.title}</Link>
-                  <div className="small muted" style={{ fontWeight: 400 }}>{getArea(it.property.areaId)!.name}</div>
-                  <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 6 }} onClick={() => toggleSaved(it.property.id)}>
-                    Remove
-                  </button>
+                  <div className="compare-head">
+                    <Link href={`/properties/${it.property.id}`} className="thumb home-img">
+                      <HomeImage property={it.property} size="thumb" />
+                    </Link>
+                    <div className="row between" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+                      <div>
+                        <Link href={`/properties/${it.property.id}`} style={{ fontWeight: 700 }}>{it.property.title}</Link>
+                        <div className="tiny muted" style={{ fontWeight: 500 }}>{getArea(it.property.areaId)!.name}</div>
+                      </div>
+                      <button type="button" className="icon-btn plain" aria-label="Remove" onClick={() => toggleSaved(it.property.id)}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                    <FitRing fit={it.e.fit} size={52} />
+                  </div>
                 </th>
               ))}
             </tr>
@@ -167,12 +177,15 @@ export default function SavedPage() {
           <tbody>
             {rows.map((row) => {
               const best = bestIndex(row);
+              const Icon = row.icon;
               return (
                 <tr key={row.label}>
-                  <th scope="row">{row.label}</th>
+                  <th scope="row">
+                    <span className="row"><Icon size={15} className="muted" /> {row.label}</span>
+                  </th>
                   {items.map((it, i) => (
                     <td key={it.property.id} className={best === i ? "best" : ""}>
-                      {row.render(it, i)}
+                      {row.render(it)}
                     </td>
                   ))}
                 </tr>
@@ -182,14 +195,16 @@ export default function SavedPage() {
         </table>
       </div>
 
-      <div className="section-title">
-        <h2>Saved homes</h2>
-        <Link href="/areas" className="small" style={{ color: "var(--accent)", fontWeight: 600 }}>Keep exploring</Link>
-      </div>
-      <div className="grid grid-3">
-        {items.map(({ property, e }) => (
-          <PropertyCard key={property.id} property={property} evaluation={e} showArea={getArea(property.areaId)!.name} />
-        ))}
+      <div className="section">
+        <div className="section-head">
+          <h2><Scale size={19} /> Saved homes</h2>
+          <Link href="/areas" className="small" style={{ color: "var(--accent)", fontWeight: 650 }}>Keep exploring</Link>
+        </div>
+        <div className="grid grid-3">
+          {items.map(({ property, e }) => (
+            <HomeCard key={property.id} property={property} evaluation={e} areaName={getArea(property.areaId)!.name} />
+          ))}
+        </div>
       </div>
     </div>
   );
