@@ -77,9 +77,39 @@ const ROWS: Row[] = [
   ["navan", "4-bed detached", "Athlumney, Navan", "House", 4, 3, 2150, "B2", 11, "Navan town coach stop", -0.006, 0.008, ["Large garden", "Driveway"]],
 ];
 
+// Mock locations: each listing keeps the direction of its hand-picked offset
+// but sits at least ~450 m from the area centre and ~350 m from the other
+// homes in the area, so every home gets its own pin on the map. Deterministic,
+// so a home is always in the same spot.
+const KM_PER_LAT = 111.32;
+function spread(rows: Row[]): [number, number][] {
+  const placed = new Map<string, [number, number][]>();
+  return rows.map(([areaId, , , , , , , , , , dLat, dLng], i) => {
+    const area = getArea(areaId)!;
+    const kmLng = KM_PER_LAT * Math.cos((area.lat * Math.PI) / 180);
+    let y = dLat * KM_PER_LAT;
+    let x = dLng * kmLng;
+    let dist = Math.hypot(x, y);
+    let angle = dist > 0.01 ? Math.atan2(y, x) : (i * 2.39996) % (2 * Math.PI);
+    dist = Math.max(dist, 0.45);
+    const others = placed.get(areaId) ?? [];
+    for (let tries = 0; tries < 12; tries++) {
+      x = Math.cos(angle) * dist;
+      y = Math.sin(angle) * dist;
+      if (others.every(([ox, oy]) => Math.hypot(ox - x, oy - y) >= 0.35)) break;
+      angle += 0.7;
+      if (tries % 4 === 3) dist += 0.2;
+    }
+    others.push([x, y]);
+    placed.set(areaId, others);
+    return [area.lat + y / KM_PER_LAT, area.lng + x / kmLng];
+  });
+}
+const SPOTS = spread(ROWS);
+
 const SAMPLE: Property[] = ROWS.map((r, i) => {
-  const [areaId, title, address, type, beds, baths, rent, ber, walkToStopMin, stopName, dLat, dLng, features] = r;
-  const area = getArea(areaId)!;
+  const [areaId, title, address, type, beds, baths, rent, ber, walkToStopMin, stopName, , , features] = r;
+  const [lat, lng] = SPOTS[i];
   return {
     id: `${areaId}-${i + 1}`,
     areaId,
@@ -92,8 +122,8 @@ const SAMPLE: Property[] = ROWS.map((r, i) => {
     ber,
     walkToStopMin,
     stopName,
-    lat: area.lat + dLat,
-    lng: area.lng + dLng,
+    lat: Number(lat.toFixed(5)),
+    lng: Number(lng.toFixed(5)),
     features,
   };
 });

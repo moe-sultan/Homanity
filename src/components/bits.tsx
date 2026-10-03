@@ -2,13 +2,11 @@
 
 import {
   Briefcase,
-  Building2,
   Church,
   Dumbbell,
   GraduationCap,
   Heart,
   Hospital,
-  House,
   MapPin,
   Mosque,
   School,
@@ -26,6 +24,7 @@ import type { PoiCategory, Property } from "@/lib/data/types";
 import { fitTone, type PlaceLink } from "@/lib/fit/evaluate";
 import { useLive } from "@/lib/live";
 import { useStore } from "@/lib/store";
+import { HouseArt } from "./Illustrations";
 
 export const euro = (n: number) => `€${Math.round(n).toLocaleString("en-IE")}`;
 
@@ -175,23 +174,17 @@ export function TravelSource() {
   );
 }
 
-// Photo for a home: Google Street View when enabled, otherwise an illustration.
-const HUES = [158, 200, 28, 340, 260, 90, 12];
+// Photo for a home: Google Street View when enabled, otherwise a drawn
+// picture of the home that needs no key or network.
 export function HomeImage({ property, size = "card" }: { property: Property; size?: "card" | "hero" | "thumb" }) {
   const { status } = useLive();
   const [failed, setFailed] = useState(false);
-  const hue = HUES[[...property.id].reduce((s, ch) => s + ch.charCodeAt(0), 0) % HUES.length];
-  const Icon = property.type === "Apartment" ? Building2 : House;
   const showPhoto = status?.streetView && !failed;
   const [w, h] = size === "hero" ? [640, 420] : size === "thumb" ? [320, 180] : [480, 300];
   return (
     <>
-      <div
-        className="illu"
-        style={{ background: `linear-gradient(135deg, hsl(${hue} 38% 62%), hsl(${(hue + 30) % 360} 42% 44%))` }}
-        aria-hidden
-      >
-        <Icon size={size === "hero" ? 96 : size === "thumb" ? 36 : 56} strokeWidth={1.4} />
+      <div className="illu" aria-hidden>
+        <HouseArt property={property} />
       </div>
       {showPhoto && (
         // eslint-disable-next-line @next/next/no-img-element

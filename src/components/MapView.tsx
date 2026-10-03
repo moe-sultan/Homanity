@@ -99,7 +99,12 @@ export function MapView({ home, homeKind = "property", places, properties = [], 
       const { L, m } = created;
       map = m;
       const bounds = L.latLngBounds([[home.lat, home.lng]]);
-      for (const pt of addPlaces(L, m, home, places)) bounds.extend(pt);
+      // On an area page, frame the neighbourhood so each home's pin is
+      // readable; far-off places stay on the map, reached by their line.
+      const framed = homeKind === "area" && properties.length > 0;
+      for (const pt of addPlaces(L, m, home, places)) {
+        if (!framed || L.latLng(pt).distanceTo([home.lat, home.lng]) < 3000) bounds.extend(pt);
+      }
 
       for (const p of properties) {
         const icon = L.divIcon({ className: "", html: `<div class="price-pin">${p.label}</div>`, iconSize: [0, 0] });

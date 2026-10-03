@@ -4,6 +4,7 @@ import { ChevronRight, Clock, House, TrainFront, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FitRing, TravelSource, euro, placeIcon, useRequireContext } from "@/components/bits";
+import { AreaArt } from "@/components/Illustrations";
 import { AreasMap } from "@/components/MapView";
 import { evaluateAllAreas, type AreaEvaluation } from "@/lib/fit/evaluate";
 import { useLive } from "@/lib/live";
@@ -19,6 +20,9 @@ function AreaRow({ e, budget, hot, onHover }: { e: AreaEvaluation; budget?: numb
       onMouseEnter={() => onHover(e.area.id)}
       onMouseLeave={() => onHover(null)}
     >
+      <div className="area-thumb" aria-hidden>
+        <AreaArt area={e.area} height={64} />
+      </div>
       <FitRing fit={e.fit} size={58} />
       <div className="area-main">
         <div className="area-name">
