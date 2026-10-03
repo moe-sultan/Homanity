@@ -20,7 +20,7 @@ Maps"), and `GET /api/status` returns the same as JSON.
 | Finding a place someone names | ~40 curated landmarks and areas | Google Places text search, anywhere in Ireland | `GOOGLE_MAPS_API_KEY` |
 | Photos of homes | Illustration | Google Street View Static image | `GOOGLE_MAPS_API_KEY` |
 | Listings | 42-home curated sample | Your CSV, via `npm run import:listings` | none |
-| Map tiles | OpenStreetMap / CARTO (free, no key) | unchanged | none |
+| Map tiles | OpenStreetMap (free, no key) | unchanged | none |
 
 Keys stay on the server. The browser only calls this app's own `/api/*` routes, which add the key.
 
@@ -129,6 +129,18 @@ Map each curated area to its RTB location (e.g. "Bray, Wicklow") and replace `ty
   "nearest school" points.
 - **OpenStreetMap Overpass API**: real mosques, churches, GPs, supermarkets and parks near each home, no key
   (respect its fair-use limits, or cache the results into `src/lib/data/places.ts`).
+
+## 6. Photos of homes and areas (no key needed)
+
+The app shows realistic, freely licensed photos when they've been fetched, and drawings otherwise.
+
+```bash
+npm run fetch:photos
+```
+
+This downloads one photo per area and a few per type of home (apartment, terrace, semi-d, detached, duplex) from Wikimedia Commons into `public/photos/`. It also records each photo's author and licence in `src/lib/data/photos.json`. Only licences that allow free reuse are accepted: public domain, CC0, CC BY and CC BY-SA. No royalties are due, but CC BY and CC BY-SA require a credit. The app shows the credit on the photo and on the `/credits` page.
+
+The photos show the area or the type of home, not the actual listing, and the home page labels them "Representative photo". To swap a photo you don't like, put its exact Commons file name (`"File:Name.jpg"`) first in that entry in `scripts/photo-sources.json`, delete it from `photos.json`, and run the command again. Commit the files in `public/photos/` and `photos.json` so the demo works offline.
 
 ## Troubleshooting
 

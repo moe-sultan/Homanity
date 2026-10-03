@@ -4,7 +4,7 @@ import { ArrowLeft, Bus, CalendarDays, MapPinned, TrainFront, Wallet } from "luc
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { FitRing, TravelSource, categoryIcon, euro, placeIcon, useRequireContext } from "@/components/bits";
+import { AreaPicture, FitRing, TravelSource, categoryIcon, euro, placeIcon, useRequireContext } from "@/components/bits";
 import { HomeCard } from "@/components/HomeCard";
 import { MapView } from "@/components/MapView";
 import { WeekRows } from "@/components/WeekRows";
@@ -62,6 +62,9 @@ export default function AreaPage() {
   return (
     <div className="container fade-in">
       <Link href="/areas" className="back"><ArrowLeft size={16} /> All areas</Link>
+      <div className="area-banner">
+        <AreaPicture area={area} height={200} credit />
+      </div>
       <div className="detail-head">
         <div className="titles">
           <div className="row">

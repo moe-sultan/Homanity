@@ -26,7 +26,7 @@ import { FairRent, FitRing, HomeImage, SaveButton, TravelSource, euro, placeIcon
 import { MapView } from "@/components/MapView";
 import { WeekRows } from "@/components/WeekRows";
 import { getArea } from "@/lib/data/areas";
-import { getProperty } from "@/lib/data/properties";
+import { getProperty, propertiesInArea } from "@/lib/data/properties";
 import { evaluateProperty, type FitFactor } from "@/lib/fit/evaluate";
 import { useLive } from "@/lib/live";
 import { useStore } from "@/lib/store";
@@ -218,6 +218,9 @@ export default function PropertyPage() {
             minutes: l.travel.minutes,
             icon: l.kind === "place" ? placeIcon({ name: l.name }) : undefined,
           }))}
+          properties={propertiesInArea(area.id)
+            .filter((p) => p.id !== property.id)
+            .map((p) => ({ lat: p.lat, lng: p.lng, label: euro(p.rent), href: `/properties/${p.id}` }))}
         />
       </div>
     </div>

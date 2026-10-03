@@ -2,13 +2,11 @@
 
 import {
   Briefcase,
-  Building2,
   Church,
   Dumbbell,
   GraduationCap,
   Heart,
   Hospital,
-  House,
   MapPin,
   Mosque,
   School,
@@ -22,10 +20,12 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ImportantPlace, Importance } from "@/lib/context/types";
-import type { PoiCategory, Property } from "@/lib/data/types";
+import { areaPhoto, homeKind, homePhoto, type Photo } from "@/lib/data/photos";
+import type { Area, PoiCategory, Property } from "@/lib/data/types";
 import { fitTone, type PlaceLink } from "@/lib/fit/evaluate";
 import { useLive } from "@/lib/live";
 import { useStore } from "@/lib/store";
+import { AreaArt, HouseArt } from "./Illustrations";
 
 export const euro = (n: number) => `€${Math.round(n).toLocaleString("en-IE")}`;
 
@@ -175,35 +175,67 @@ export function TravelSource() {
   );
 }
 
-// Photo for a home: Google Street View when enabled, otherwise an illustration.
-const HUES = [158, 200, 28, 340, 260, 90, 12];
+// Picture for a home, best first: Google Street View when a key is set, a
+// freely licensed representative photo when one has been fetched, otherwise
+// a drawing that needs no key or network.
 export function HomeImage({ property, size = "card" }: { property: Property; size?: "card" | "hero" | "thumb" }) {
   const { status } = useLive();
   const [failed, setFailed] = useState(false);
-  const hue = HUES[[...property.id].reduce((s, ch) => s + ch.charCodeAt(0), 0) % HUES.length];
-  const Icon = property.type === "Apartment" ? Building2 : House;
-  const showPhoto = status?.streetView && !failed;
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const showStreet = status?.streetView && !failed;
+  const photo = photoFailed ? null : homePhoto(property);
   const [w, h] = size === "hero" ? [640, 420] : size === "thumb" ? [320, 180] : [480, 300];
   return (
     <>
-      <div
-        className="illu"
-        style={{ background: `linear-gradient(135deg, hsl(${hue} 38% 62%), hsl(${(hue + 30) % 360} 42% 44%))` }}
-        aria-hidden
-      >
-        <Icon size={size === "hero" ? 96 : size === "thumb" ? 36 : 56} strokeWidth={1.4} />
+      <div className="illu" aria-hidden>
+        <HouseArt property={property} />
       </div>
-      {showPhoto && (
+      {photo && !showStreet && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo.src}
+          alt={`Representative photo of a ${homeKind(property)} home`}
+          title={`Representative photo: ${photo.credit}, ${photo.license}`}
+          onError={() => setPhotoFailed(true)}
+          loading="lazy"
+        />
+      )}
+      {photo && !showStreet && size === "hero" && <PhotoCredit photo={photo} label="Representative photo" />}
+      {showStreet && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={`/api/streetview?lat=${property.lat}&lng=${property.lng}&w=${w}&h=${h}`}
           alt={`Street view near ${property.address}`}
           onError={() => setFailed(true)}
-          style={{ position: "relative" }}
           loading="lazy"
         />
       )}
     </>
+  );
+}
+
+// Author and licence line that CC BY and CC BY-SA photos require.
+export function PhotoCredit({ photo, label }: { photo: Photo; label?: string }) {
+  return (
+    <a className="photo-credit" href={photo.sourceUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+      {label ? `${label} · ` : ""}
+      {photo.credit}, {photo.license}
+    </a>
+  );
+}
+
+// Banner or thumbnail for an area: a real photo when one has been fetched,
+// otherwise a drawing.
+export function AreaPicture({ area, height, credit }: { area: Area; height: number; credit?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const photo = failed ? null : areaPhoto(area.id);
+  if (!photo) return <AreaArt area={area} height={height} />;
+  return (
+    <div className="area-photo" style={{ height }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={photo.src} alt={`${area.name}`} title={`${photo.credit}, ${photo.license}`} onError={() => setFailed(true)} loading="lazy" />
+      {credit && <PhotoCredit photo={photo} />}
+    </div>
   );
 }
 

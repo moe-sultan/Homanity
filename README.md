@@ -13,12 +13,14 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Node 20+ required. The map tiles load from CARTO/OpenStreetMap, so the machine needs internet access.
+Node 20+ required. The map tiles load from OpenStreetMap, so the machine needs internet access.
 
 It runs with no API keys. To switch on real data (Claude for reading the description, Google Maps for live
 travel times, place search and street photos, and your own listings), copy `.env.example` to `.env.local` and
 follow [docs/API_SETUP.md](docs/API_SETUP.md). Every integration falls back to the built-in version if its key
 is missing, and the footer shows which sources are live.
+
+For realistic photos of homes and areas, run `npm run fetch:photos` once. It fetches freely licensed photos from Wikimedia Commons, with credits; see section 6 of the setup guide. Without them, the app shows drawings.
 
 ## The flow
 

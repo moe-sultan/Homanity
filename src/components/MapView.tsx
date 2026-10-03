@@ -11,13 +11,13 @@ export type MapPoint = { lat: number; lng: number; label: string; href?: string 
 export type MapPlace = MapPoint & { kind: "work" | "place"; minutes?: number; icon?: ComponentType<{ size?: number }> };
 export type MapArea = MapPoint & { id: string; fit: number };
 
-// Free map tiles that need no API key. If the first provider fails to load
-// (blocked network, rate limit), the map switches to the next one.
-// NEXT_PUBLIC_MAP_TILES can point at any other {z}/{x}/{y} tile server.
+// OpenStreetMap's own tiles need no API key. (CARTO's basemaps now
+// watermark tiles "API key required" instead of failing, so they can't be
+// a silent fallback.) NEXT_PUBLIC_MAP_TILES can point at any other
+// {z}/{x}/{y} tile server; if it fails to load, the map falls back to OSM.
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const TILE_PROVIDERS = [
   ...(process.env.NEXT_PUBLIC_MAP_TILES ? [{ url: process.env.NEXT_PUBLIC_MAP_TILES, attribution: OSM }] : []),
-  { url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", attribution: `${OSM} &copy; CARTO` },
   { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: OSM },
 ];
 
@@ -99,7 +99,12 @@ export function MapView({ home, homeKind = "property", places, properties = [], 
       const { L, m } = created;
       map = m;
       const bounds = L.latLngBounds([[home.lat, home.lng]]);
-      for (const pt of addPlaces(L, m, home, places)) bounds.extend(pt);
+      // On an area page, frame the neighbourhood so each home's pin is
+      // readable; far-off places stay on the map, reached by their line.
+      const framed = homeKind === "area" && properties.length > 0;
+      for (const pt of addPlaces(L, m, home, places)) {
+        if (!framed || L.latLng(pt).distanceTo([home.lat, home.lng]) < 3000) bounds.extend(pt);
+      }
 
       for (const p of properties) {
         const icon = L.divIcon({ className: "", html: `<div class="price-pin">${p.label}</div>`, iconSize: [0, 0] });
