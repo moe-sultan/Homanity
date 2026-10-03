@@ -1,38 +1,84 @@
 "use client";
 
+import {
+  ArrowRight,
+  Baby,
+  Briefcase,
+  Car,
+  GraduationCap,
+  HeartHandshake,
+  MapPin,
+  Scale,
+  Sparkles,
+  Stethoscope,
+  TrainFront,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useLive } from "@/lib/live";
 import { useStore } from "@/lib/store";
 
-const PROMPTS = [
-  { label: "Where do you work or study?", text: "I work in " },
-  { label: "How many days do you go in?", text: " days a week" },
-  { label: "How do you get around?", text: "I don't have a car. " },
-  { label: "Who are you living with?", text: "I live with " },
-  { label: "What's your budget?", text: "I want to stay under €" },
-  { label: "What places do you need nearby?", text: "I need to be close to " },
+const QUICK: { icon: LucideIcon; label: string; text: string }[] = [
+  { icon: Briefcase, label: "Work", text: "I work in " },
+  { icon: Wallet, label: "Budget", text: "I want to stay under €" },
+  { icon: Car, label: "No car", text: "I don't have a car. " },
+  { icon: Baby, label: "Kids", text: "I have two kids in primary school. " },
+  { icon: MapPin, label: "A place nearby", text: "I need to be close to " },
 ];
 
-const EXAMPLE =
-  "I work near Grand Canal Dock on Mondays, Wednesdays and Thursdays. I don't have a car. I have two kids in secondary school, I want to stay under €2,300 and I need to be reasonably close to my mosque. A gym would be nice.";
+const PERSONAS: { icon: LucideIcon; title: string; line: string; text: string }[] = [
+  {
+    icon: Users,
+    title: "Family, no car",
+    line: "Hybrid office job, two teens, mosque nearby",
+    text: "I work near Grand Canal Dock on Mondays, Wednesdays and Thursdays. I don't have a car. I have two kids in secondary school, I want to stay under €2,300 and I need to be reasonably close to my mosque. A gym would be nice.",
+  },
+  {
+    icon: GraduationCap,
+    title: "Student at UCD",
+    line: "Lectures 4 days, tight budget, cycles",
+    text: "I'm a student at UCD with lectures four days a week. I cycle everywhere and I'd like to stay under €1,300 for a one-bed. Being near a park would be nice.",
+  },
+  {
+    icon: Stethoscope,
+    title: "Nurse at St James's",
+    line: "Shift work, drives, mum in Lucan",
+    text: "I work as a nurse at St James's Hospital, five days a week. I have a car. My partner and I need a two-bed under €2,000, and I'd like to be near my mum in Lucan.",
+  },
+];
 
-export default function ContextPage() {
+const VALUES: { icon: LucideIcon; title: string; line: string }[] = [
+  { icon: Scale, title: "Know what's fair", line: "Every rent checked against the area" },
+  { icon: TrainFront, title: "Look beyond the city", line: "Commuter towns, in real minutes and euro" },
+  { icon: HeartHandshake, title: "You decide", line: "We show the trade-offs, never pick for you" },
+];
+
+export default function StartPage() {
   const router = useRouter();
   const { context, setContext } = useStore();
+  const { status } = useLive();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
 
-  const addPrompt = (t: string) => setText((cur) => (cur && !cur.endsWith(" ") ? `${cur} ${t}` : cur + t));
+  const addQuick = (t: string) => {
+    setText((cur) => (cur && !/\s$/.test(cur) ? `${cur} ${t}` : cur + t));
+    box.current?.focus();
+  };
 
-  async function submit() {
+  async function submit(value = text) {
+    if (!value.trim()) return;
     setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: value }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
@@ -46,64 +92,96 @@ export default function ContextPage() {
 
   return (
     <div className="container narrow">
-      <div className="hero">
-        <span className="eyebrow">Renting in Ireland, on your terms</span>
-        <h1>Your home should fit your life, not just your search criteria.</h1>
-        <p className="lede">
-          Tell us how you actually live. We&apos;ll show you where you could live, what each home would mean for your week, and
-          whether the rent is fair for the area, so you walk into every viewing knowing as much as the landlord does.
-        </p>
-      </div>
+      <div className="hero fade-in">
+        <span className="pill">
+          <Sparkles size={14} /> Renting in Ireland, on your terms
+        </span>
+        <h1>
+          Find a home that fits <em>your life</em>, not just a filter.
+        </h1>
+        <p className="sub">Describe your week in your own words. We&apos;ll show where you could live and whether the rent is fair.</p>
 
-      <div className="card composer" style={{ marginTop: 16 }}>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="For example: I work in Dublin three days a week, I don't have a car, I have two kids in secondary school, I want to stay under €1,800 and I need to be reasonably close to my mosque."
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && text.trim()) submit();
-          }}
-          autoFocus
-        />
-        <div className="composer-foot">
-          <button type="button" className="chip" onClick={() => setText(EXAMPLE)}>
-            Try an example
-          </button>
-          <div className="row">
-            {context && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => router.push("/context")}>
-                Back to my context
-              </button>
-            )}
-            <button type="button" className="btn btn-primary" onClick={submit} disabled={!text.trim() || busy}>
+        <div className="card composer">
+          <textarea
+            ref={box}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="e.g. I work in Dublin three days a week, no car, two kids in secondary school, under €1,800, close to my mosque."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            aria-label="Describe your life"
+            autoFocus
+          />
+          <div className="composer-foot">
+            <div className="chips">
+              {QUICK.map(({ icon: Icon, label, text: t }) => (
+                <button key={label} type="button" className="chip" onClick={() => addQuick(t)}>
+                  <Icon size={14} /> {label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || busy}>
               {busy ? <span className="spinner" /> : null}
-              {busy ? "Understanding your life…" : "Show me where I could live"}
+              {busy ? "Reading…" : "Show me places"}
+              {!busy && <ArrowRight size={17} />}
             </button>
           </div>
         </div>
-      </div>
-      {error && <p className="small" style={{ color: "var(--weak)", marginTop: 8 }}>{error}</p>}
+        {error && <p className="small" style={{ color: "var(--weak)" }}>{error}</p>}
+        {status && (
+          <p className="tiny muted">
+            {status.contextExtraction === "claude" ? "Read by Claude" : "Read by built-in rules"} · stays in your browser
+            {context && (
+              <>
+                {" · "}
+                <a href="/context" onClick={(e) => (e.preventDefault(), router.push("/context"))} style={{ color: "var(--accent)", fontWeight: 650 }}>
+                  Continue where you left off
+                </a>
+              </>
+            )}
+          </p>
+        )}
 
-      <div className="chips" style={{ marginTop: 16 }}>
-        {PROMPTS.map((p) => (
-          <button key={p.label} type="button" className="chip" onClick={() => addPrompt(p.text)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
+        <div className="section-label" style={{ marginTop: 18 }}>Or try someone&apos;s week</div>
+        <div className="personas">
+          {PERSONAS.map(({ icon: Icon, title, line, text: t }) => (
+            <button
+              key={title}
+              type="button"
+              className="persona"
+              disabled={busy}
+              onClick={() => {
+                setText(t);
+                submit(t);
+              }}
+            >
+              <span className="icon-bubble accent lg">
+                <Icon size={20} />
+              </span>
+              <span>
+                <b>{title}</b>
+                <span>{line}</span>
+              </span>
+            </button>
+          ))}
+        </div>
 
-      <div className="promises">
-        <div className="promise">
-          <h3>Know what&apos;s fair</h3>
-          <p>Every rent is shown against the typical rent for that area and size, so you can spot overpricing.</p>
-        </div>
-        <div className="promise">
-          <h3>Look beyond the city</h3>
-          <p>Commuter towns often give you more space for less. See the real trade-off in minutes and euro.</p>
-        </div>
-        <div className="promise">
-          <h3>You decide</h3>
-          <p>We lay out the trade-offs for your life. The choice is always yours, and we never pick for you.</p>
+        <div className="values">
+          {VALUES.map(({ icon: Icon, title, line }) => (
+            <div key={title} className="value-tile">
+              <span className="icon-bubble">
+                <Icon size={18} />
+              </span>
+              <span>
+                <b>{title}</b>
+                <span>{line}</span>
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

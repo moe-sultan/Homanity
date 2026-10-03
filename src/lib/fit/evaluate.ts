@@ -2,10 +2,10 @@
 // Nothing here is stored; it is recomputed from the two inputs.
 import { AREAS, getArea } from "../data/areas";
 import { POIS } from "../data/places";
-import { propertiesInArea } from "../data/properties";
+import { PROPERTIES, propertiesInArea } from "../data/properties";
 import type { Area, LatLng, Poi, Property } from "../data/types";
 import type { ImportantPlace, Importance, UserContext, WorkPlace } from "../context/types";
-import { estimateTravel, haversineKm, type Endpoint, type TravelEstimate } from "./travel";
+import { haversineKm, travelBetween, type Endpoint, type TravelEstimate, type TravelLookup } from "./travel";
 
 const WEIGHT: Record<Importance, number> = { high: 3, medium: 2, low: 1 };
 
@@ -60,13 +60,13 @@ function resolvePlace(home: LatLng, place: ImportantPlace): (Endpoint & { label:
   return poi ? { lat: poi.lat, lng: poi.lng, rail: false, label: poi.name } : undefined;
 }
 
-function workLink(home: Endpoint, w: WorkPlace, ctx: UserContext): PlaceLink {
+function workLink(home: Endpoint, w: WorkPlace, ctx: UserContext, lookup?: TravelLookup): PlaceLink {
   return {
     id: w.id,
     name: w.label,
     importance: ctx.priorities.commute,
     point: { lat: w.lat, lng: w.lng, label: w.label },
-    travel: estimateTravel(home, w, ctx.transport),
+    travel: travelBetween(home, w, ctx.transport, lookup),
     kind: "work",
     daysPerWeek: w.daysPerWeek,
   };
@@ -78,6 +78,7 @@ export function evaluateHome(
   rent: number,
   typicalRent: number,
   beds?: number,
+  lookup?: TravelLookup,
 ): Evaluation {
   const factors: FitFactor[] = [];
   const links: PlaceLink[] = [];
@@ -95,7 +96,7 @@ export function evaluateHome(
 
   let monthlyCost = 0;
   for (const w of ctx.work) {
-    const link = workLink(home, w, ctx);
+    const link = workLink(home, w, ctx, lookup);
     links.push(link);
     const days = w.daysPerWeek ?? 5;
     const dayFactor = 0.6 + 0.12 * days;
@@ -112,7 +113,7 @@ export function evaluateHome(
   for (const place of ctx.importantPlaces) {
     const target = resolvePlace(home, place);
     if (!target) continue;
-    const travel = estimateTravel(home, target, ctx.transport);
+    const travel = travelBetween(home, target, ctx.transport, lookup);
     links.push({ id: place.id, name: place.name, importance: place.importance, point: target, travel, kind: "place" });
     factors.push({
       key: `place-${place.id}`,
@@ -179,7 +180,7 @@ export function rentDiffLabel(diff: number): string {
     : `€${diff.toLocaleString()} above typical area rent`;
 }
 
-export function evaluateProperty(ctx: UserContext, property: Property): Evaluation {
+export function evaluateProperty(ctx: UserContext, property: Property, lookup?: TravelLookup): Evaluation {
   const area = getArea(property.areaId)!;
   return evaluateHome(
     ctx,
@@ -187,6 +188,7 @@ export function evaluateProperty(ctx: UserContext, property: Property): Evaluati
     property.rent,
     area.typicalRent[property.beds],
     property.beds,
+    lookup,
   );
 }
 
@@ -196,7 +198,7 @@ export type AreaEvaluation = Evaluation & {
   propertyFits: { property: Property; evaluation: Evaluation }[];
 };
 
-export function evaluateArea(ctx: UserContext, area: Area): AreaEvaluation {
+export function evaluateArea(ctx: UserContext, area: Area, lookup?: TravelLookup): AreaEvaluation {
   const beds = (Math.min(4, Math.max(1, ctx.bedrooms?.count ?? 2)) as 1 | 2 | 3 | 4);
   const props = propertiesInArea(area.id);
   const avgWalk = props.length ? Math.round(props.reduce((s, p) => s + p.walkToStopMin, 0) / props.length) : 8;
@@ -206,15 +208,28 @@ export function evaluateArea(ctx: UserContext, area: Area): AreaEvaluation {
     area.typicalRent[beds],
     area.typicalRent[beds],
     beds,
+    lookup,
   );
   const propertyFits = props
-    .map((property) => ({ property, evaluation: evaluateProperty(ctx, property) }))
+    .map((property) => ({ property, evaluation: evaluateProperty(ctx, property, lookup) }))
     .sort((a, b) => b.evaluation.fit - a.evaluation.fit);
   return { ...evaluation, area, beds, propertyFits };
 }
 
-export function evaluateAllAreas(ctx: UserContext): AreaEvaluation[] {
-  return AREAS.map((a) => evaluateArea(ctx, a)).sort((a, b) => b.fit - a.fit);
+export function evaluateAllAreas(ctx: UserContext, lookup?: TravelLookup): AreaEvaluation[] {
+  return AREAS.map((a) => evaluateArea(ctx, a, lookup)).sort((a, b) => b.fit - a.fit);
+}
+
+// Every origin (area centres and homes) and fixed destination (work and named
+// places) the Fit score needs a travel time for. "Nearest" places are left to
+// the estimate since they depend on the home.
+export function travelPairsFor(ctx: UserContext): { origins: LatLng[]; destinations: LatLng[] } {
+  const origins = [...AREAS.map((a) => ({ lat: a.lat, lng: a.lng })), ...PROPERTIES.map((p) => ({ lat: p.lat, lng: p.lng }))];
+  const destinations = [
+    ...ctx.work.map((w) => ({ lat: w.lat, lng: w.lng })),
+    ...ctx.importantPlaces.flatMap((p) => (p.target.kind === "fixed" ? [{ lat: p.target.lat, lng: p.target.lng }] : [])),
+  ];
+  return { origins, destinations };
 }
 
 // Short human signals for cards: "42 min to work · 8 min to school".

@@ -51,4 +51,7 @@ export type Property = LatLng & {
   walkToStopMin: number; // walk to nearest frequent public transport stop
   stopName: string;
   features: string[];
+  // Imported listings only: where the listing came from and a link to it.
+  source?: string;
+  url?: string;
 };
