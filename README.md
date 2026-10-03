@@ -13,7 +13,7 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Node 20+ required. The map tiles load from CARTO/OpenStreetMap, so the machine needs internet access.
+Node 20+ required. The map tiles load from OpenStreetMap, so the machine needs internet access.
 
 It runs with no API keys. To switch on real data (Claude for reading the description, Google Maps for live
 travel times, place search and street photos, and your own listings), copy `.env.example` to `.env.local` and

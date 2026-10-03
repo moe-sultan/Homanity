@@ -20,7 +20,7 @@ Maps"), and `GET /api/status` returns the same as JSON.
 | Finding a place someone names | ~40 curated landmarks and areas | Google Places text search, anywhere in Ireland | `GOOGLE_MAPS_API_KEY` |
 | Photos of homes | Illustration | Google Street View Static image | `GOOGLE_MAPS_API_KEY` |
 | Listings | 42-home curated sample | Your CSV, via `npm run import:listings` | none |
-| Map tiles | OpenStreetMap / CARTO (free, no key) | unchanged | none |
+| Map tiles | OpenStreetMap (free, no key) | unchanged | none |
 
 Keys stay on the server. The browser only calls this app's own `/api/*` routes, which add the key.
 
