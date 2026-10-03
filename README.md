@@ -20,6 +20,8 @@ travel times, place search and street photos, and your own listings), copy `.env
 follow [docs/API_SETUP.md](docs/API_SETUP.md). Every integration falls back to the built-in version if its key
 is missing, and the footer shows which sources are live.
 
+For realistic photos of homes and areas, run `npm run fetch:photos` once. It fetches freely licensed photos from Wikimedia Commons, with credits; see section 6 of the setup guide. Without them, the app shows drawings.
+
 ## The flow
 
 1. `/` Describe your life in free text, add details with quick chips, or start from one of three example weeks.

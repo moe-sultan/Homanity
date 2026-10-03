@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { allPhotos } from "@/lib/data/photos";
 import { useLive } from "@/lib/live";
 
 // Footer line saying where the numbers come from, so nobody mistakes a demo
@@ -14,5 +16,16 @@ export function DataSources() {
     "Listings: curated sample",
     "Rents: indicative benchmarks",
   ];
-  return <span>{items.join(" · ")}</span>;
+  const photos = allPhotos().length > 0;
+  return (
+    <span>
+      {items.join(" · ")}
+      {photos && (
+        <>
+          {" · "}
+          <Link href="/credits" style={{ color: "inherit", textDecoration: "underline" }}>Photo credits</Link>
+        </>
+      )}
+    </span>
+  );
 }

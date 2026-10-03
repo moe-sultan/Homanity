@@ -1,0 +1,27 @@
+{
+  "_comment": "Wikimedia Commons searches used by `npm run fetch:photos`. Each entry is tried in order until a photo passes the filters (landscape JPEG, at least 1200 px wide, free licence). To pin an exact photo, use its file name, e.g. \"File:Bray seafront.jpg\".",
+  "areas": {
+    "dublin-8": ["Kilmainham Dublin street", "Rialto Dublin", "Grand Canal Dublin 8"],
+    "dundrum": ["Dundrum Dublin", "Dundrum village Dublin"],
+    "tallaght": ["Tallaght Dublin", "Tallaght village"],
+    "clondalkin": ["Clondalkin village", "Clondalkin round tower"],
+    "blanchardstown": ["Blanchardstown Dublin", "Castleknock"],
+    "swords": ["Swords Main Street", "Swords Castle"],
+    "bray": ["Bray seafront", "Bray promenade", "Bray Head"],
+    "greystones": ["Greystones harbour", "Greystones Wicklow"],
+    "maynooth": ["Maynooth Main Street", "Maynooth Kildare"],
+    "celbridge": ["Celbridge Main Street", "Celbridge Kildare"],
+    "naas": ["Naas Main Street", "Naas Kildare"],
+    "balbriggan": ["Balbriggan harbour", "Balbriggan beach"],
+    "drogheda": ["Drogheda Boyne", "Drogheda town"],
+    "navan": ["Navan Meath", "Navan town"]
+  },
+  "homes": {
+    "apartment": ["apartment building Dublin", "apartments Dublin Docklands", "apartment block Ireland"],
+    "terrace": ["terraced houses Dublin", "red brick terrace Dublin", "Victorian terrace Dublin"],
+    "semi": ["semi-detached houses Ireland", "housing estate Dublin", "semi-detached house Dublin"],
+    "detached": ["detached house Ireland", "bungalow Ireland"],
+    "duplex": ["townhouses Dublin", "duplex apartments Ireland"]
+  },
+  "perHomeKind": 6
+}
